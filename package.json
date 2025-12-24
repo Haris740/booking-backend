@@ -4,15 +4,12 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/server.ts",
     "build": "tsc && prisma generate",
     "start": "node dist/server.js",
-    "postinstall": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "typecheck": "tsc --noEmit",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
