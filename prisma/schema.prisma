@@ -35,8 +35,8 @@ enum BookingStatus {
 model User {
   id           String  @id @default(cuid())
   name         String  @db.VarChar(100)
-  email        String  @unique @db.VarChar(100)
-  phone        String? @unique @db.VarChar(20)
+  email        String? @unique @db.VarChar(100)
+  phone        String  @unique @db.VarChar(20)
   passwordHash String  @db.VarChar(255)
   city         String? @db.VarChar(100)
 
