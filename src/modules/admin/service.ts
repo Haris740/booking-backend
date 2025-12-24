@@ -6,34 +6,25 @@ const prisma = new PrismaClient();
 export async function listPendingProfessionals(page: number = 1, limit: number = 20) {
   const skip = (page - 1) * limit;
 
-  const where = { status: 'PENDING' };
+  const where = { status: 'PENDING' as any };
 
   const [profiles, total] = await Promise.all([
     prisma.professionalProfile.findMany({
-      where,
+      where: where as any,
       skip,
       take: limit,
       include: {
-        category: {
-          select: { id: true, name: true, professionType: true },
-        },
-        user: {
-          select: { id: true, name: true, email: true, phone: true, city: true },
-        },
+        category: { select: { id: true, name: true, professionType: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, city: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.professionalProfile.count({ where }),
+    prisma.professionalProfile.count({ where: where as any }),
   ]);
 
   return {
     data: profiles,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 }
 
@@ -42,23 +33,11 @@ export async function getProfessionalDetails(profileId: string) {
     where: { id: profileId },
     include: {
       category: true,
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          city: true,
-          createdAt: true,
-        },
-      },
+      user: { select: { id: true, name: true, email: true, phone: true, city: true, createdAt: true } },
     },
   });
 
-  if (!profile) {
-    throw new ApiError(404, 'Professional profile not found');
-  }
-
+  if (!profile) throw new ApiError(404, 'Professional profile not found');
   return profile;
 }
 
@@ -66,22 +45,13 @@ export async function approveProfessional(profileId: string, adminId: string, ad
   return await prisma.$transaction(async (tx: any) => {
     const profile = await tx.professionalProfile.update({
       where: { id: profileId },
-      data: {
-        status: 'APPROVED',
-        adminNote,
-        updatedById: adminId,
-      },
-      include: {
-        category: true,
-        user: true,
-      },
+      data: { status: 'APPROVED' as any, adminNote },
+      include: { category: true, user: true },
     });
 
     await tx.user.update({
       where: { id: profile.userId },
-      data: {
-        professionalStatus: 'APPROVED',
-      },
+      data: { professionalStatus: 'APPROVED' as any },
     });
 
     return profile;
@@ -92,23 +62,13 @@ export async function rejectProfessional(profileId: string, adminId: string, adm
   return await prisma.$transaction(async (tx: any) => {
     const profile = await tx.professionalProfile.update({
       where: { id: profileId },
-      data: {
-        status: 'REJECTED',
-        adminNote,
-        updatedById: adminId,
-      },
-      include: {
-        category: true,
-        user: true,
-      },
+      data: { status: 'REJECTED' as any, adminNote },
+      include: { category: true, user: true },
     });
 
     await tx.user.update({
       where: { id: profile.userId },
-      data: {
-        professionalStatus: 'REJECTED',
-        isProfessional: false,
-      },
+      data: { professionalStatus: 'REJECTED' as any, isProfessional: false },
     });
 
     return profile;
