@@ -1,28 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from './service';
-import { registerSchema, loginSchema } from './validators';
 
-export async function registerController(
-    req: Request<{}, {}, any>,
-    res: Response,
-    next: NextFunction
-) {
+export async function sendOtpController(req: Request, res: Response, next: NextFunction) {
     try {
-        const result = await authService.register(req.body);
-        res.status(201).json(result);
+        const { phone } = req.body;
+        const result = await authService.sendOtp(phone);
+        res.json(result);
     } catch (error) {
         next(error);
     }
 }
 
-export async function loginController(
-    req: Request<{}, {}, any>,
-    res: Response,
-    next: NextFunction
-) {
+export async function verifyOtpController(req: Request, res: Response, next: NextFunction) {
     try {
-        const result = await authService.login(req.body.email, req.body.password);
+        const { phone, otp } = req.body;
+        const result = await authService.verifyOtp(phone, otp);
         res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function registerController(req: Request, res: Response, next: NextFunction) {
+    try {
+        const result = await authService.register(req.body);
+        res.status(201).json(result);
     } catch (error) {
         next(error);
     }
