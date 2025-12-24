@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProfessionalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ConsultationMode {
+  ONLINE
+  OFFLINE
+  BOTH
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String  @db.VarChar(100)
+  email        String  @unique @db.VarChar(100)
+  phone        String? @unique @db.VarChar(20)
+  passwordHash String  @db.VarChar(255)
+  city         String? @db.VarChar(100)
+
+  role               UserRole           @default(USER)
+  isProfessional     Boolean            @default(false)
+  professionalStatus ProfessionalStatus @default(NONE)
+  adminNote          String?            @db.Text
+
+  // One-to-one: User -> ProfessionalProfile
+  professionalProfile ProfessionalProfile?
+
+  // One-to-many: User -> Bookings (as client)
+  userBookings Booking[] @relation("UserBookings")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+  @@index([professionalStatus])
+  @@map("users")
+}
+
+model ProfessionalCategory {
+  id             Int     @id @default(autoincrement())
+  name           String  @db.VarChar(100)
+  slug           String  @unique @db.VarChar(100)
+  description    String? @db.Text
+  professionType String  @db.VarChar(50)
+
+  profiles ProfessionalProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([professionType])
+  @@index([slug])
+  @@map("professional_categories")
+}
+
+model ProfessionalProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title      String               @db.VarChar(150)
+  categoryId Int
+  category   ProfessionalCategory @relation(fields: [categoryId], references: [id])
+
+  about            String?          @db.Text
+  yearsExperience  Int?
+  city             String           @db.VarChar(100)
+  address          String?          @db.Text
+  consultationMode ConsultationMode @default(ONLINE)
+  baseFee          Int?
+  tags             String[]         @db.VarChar(50)
+
+  status    ProfessionalStatus @default(PENDING)
+  adminNote String?            @db.Text
+
+  proBookings Booking[] @relation("ProBookings")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([city, status])
+  @@index([categoryId, status])
+  @@map("professional_profiles")
+}
+
+model Booking {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+
+  professionalId String
+  professional   ProfessionalProfile @relation("ProBookings", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  scheduledFor DateTime
+  notes        String?       @db.Text
+  status       BookingStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([professionalId, scheduledFor])
+  @@map("bookings")
+}
