@@ -1,57 +1,106 @@
 import { PrismaClient } from '@prisma/client';
 import { generateAccessToken, generateRefreshToken, JwtPayload } from '../../utils/jwt';
 import { ApiError } from '../../utils/apiError';
-import { sendOtpSms } from '../../utils/sms';
+import { sendOtpFirebase, verifyOtpFirebase, sendOtpTest } from '../../utils/sms';
 
 const prisma = new PrismaClient();
-const otpStore: { [phone: string]: { code: string; expires: number } } = {};
+
+// For Firebase flow
+const sessionStore: { 
+  [phone: string]: { 
+    sessionInfo: string; 
+    expires: number;
+  } 
+} = {};
+
+// For test mode
+const otpStore: { 
+  [phone: string]: { 
+    code: string; 
+    expires: number;
+  } 
+} = {};
+
+const USE_FIREBASE = process.env.USE_FIREBASE === 'true';
 
 export async function sendOtp(phone: string) {
-  // Validate Indian phone
+  // Validate phone
   const cleanPhone = phone.replace(/[\+\s\-]/g, '');
   if (!cleanPhone.startsWith('91') || cleanPhone.length !== 12) {
-    throw new ApiError(400, 'Invalid Indian phone number. Use +91XXXXXXXXXX format');
+    throw new ApiError(400, 'Invalid Indian phone number. Use +91XXXXXXXXXX');
   }
 
-  // Generate OTP
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  
-  // Store OTP
-  otpStore[phone] = {
-    code,
-    expires: Date.now() + 5 * 60 * 1000, // 5 minutes
-  };
+  if (USE_FIREBASE) {
+    // FIREBASE MODE
+    try {
+      const { sessionInfo } = await sendOtpFirebase(phone);
+      
+      sessionStore[phone] = {
+        sessionInfo,
+        expires: Date.now() + 5 * 60 * 1000,
+      };
 
-  // Send SMS
-  try {
-    await sendOtpSms(phone, code);
-    return { message: 'OTP sent to your phone' };
-  } catch (error) {
-    console.error('SMS send failed:', error);
-    
-    // Development fallback: log OTP
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`📱 OTP for ${phone}: ${code}`);
-      return { message: 'OTP sent (check console)' };
+      return { 
+        message: 'OTP sent to your phone via SMS',
+        provider: 'firebase',
+      };
+    } catch (error) {
+      console.error('Firebase error:', error);
+      throw new ApiError(500, 'Failed to send OTP');
     }
+  } else {
+    // TEST MODE
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    throw new ApiError(500, 'Failed to send OTP. Please try again.');
+    otpStore[phone] = {
+      code,
+      expires: Date.now() + 5 * 60 * 1000,
+    };
+
+    await sendOtpTest(phone, code);
+
+    return { 
+      message: 'OTP sent successfully',
+      provider: 'test',
+      ...(process.env.NODE_ENV !== 'production' && { 
+        otp: code,
+        note: 'Test mode: OTP included in response'
+      }),
+    };
   }
 }
 
 export async function verifyOtp(phone: string, otp: string) {
-  const otpData = otpStore[phone];
-  
-  if (!otpData || Date.now() > otpData.expires) {
-    throw new ApiError(400, 'OTP expired or invalid');
-  }
-  
-  if (otpData.code !== otp) {
-    throw new ApiError(400, 'Invalid OTP');
+  if (USE_FIREBASE) {
+    // FIREBASE VERIFICATION
+    const session = sessionStore[phone];
+    
+    if (!session || Date.now() > session.expires) {
+      throw new ApiError(400, 'Session expired');
+    }
+
+    try {
+      await verifyOtpFirebase(session.sessionInfo, otp);
+      delete sessionStore[phone];
+    } catch (error) {
+      throw new ApiError(400, 'Invalid OTP');
+    }
+  } else {
+    // TEST MODE VERIFICATION
+    const otpData = otpStore[phone];
+    
+    if (!otpData || Date.now() > otpData.expires) {
+      throw new ApiError(400, 'OTP expired or invalid');
+    }
+    
+    if (otpData.code !== otp) {
+      throw new ApiError(400, 'Invalid OTP');
+    }
+
+    delete otpStore[phone];
   }
 
-  delete otpStore[phone];
-
+  // Find or create user
   let user = await prisma.user.findUnique({
     where: { phone: phone.replace(/[\+\s\-]/g, '') },
   });
@@ -91,4 +140,3 @@ export async function verifyOtp(phone: string, otp: string) {
     tokens: { accessToken, refreshToken },
   };
 }
-

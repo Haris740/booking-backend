@@ -1,50 +1,57 @@
 import axios from 'axios';
 
-const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || '';
+const FIREBASE_API_KEY = process.env.FIREBASE_WEB_API_KEY || '';
 
-export async function sendOtpSms(phone: string, otp: string): Promise<void> {
-  // Fast2SMS only supports Indian numbers without +91
-  const cleanPhone = phone.replace(/[\+\s\-]/g, '').replace(/^91/, '');
-  
-  if (cleanPhone.length !== 10) {
-    throw new Error('Invalid Indian phone number');
-  }
+interface FirebaseOtpSession {
+  sessionInfo: string;
+  phoneNumber: string;
+}
 
-  const message = `Your OTP for Booking App is ${otp}. Valid for 5 minutes. Do not share this code.`;
-
+export async function sendOtpFirebase(phone: string): Promise<FirebaseOtpSession> {
   try {
     const response = await axios.post(
-      'https://www.fast2sms.com/dev/bulkV2',
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${FIREBASE_API_KEY}`,
       {
-        route: 'v3',
-        sender_id: 'FSTSMS', // Default sender ID
-        message: message,
-        language: 'english',
-        flash: 0,
-        numbers: cleanPhone,
-      },
-      {
-        headers: {
-          authorization: FAST2SMS_API_KEY,
-        },
+        phoneNumber: phone,
+        recaptchaToken: process.env.FIREBASE_RECAPTCHA_TOKEN || 'test-token',
       }
     );
 
-    if (response.data.return === false) {
-      console.error('Fast2SMS error:', response.data);
-      throw new Error('Failed to send SMS');
-    }
-
-    console.log('SMS sent successfully:', response.data);
+    return {
+      sessionInfo: response.data.sessionInfo,
+      phoneNumber: phone,
+    };
   } catch (error: any) {
-    console.error('Fast2SMS error:', error.response?.data || error.message);
-    
-    // Fallback: Log OTP if SMS fails (development)
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`⚠️ SMS FAILED. OTP for ${phone}: ${otp}`);
-    }
-    
-    throw error;
+    console.error('Firebase SMS error:', error.response?.data || error.message);
+    throw new Error('Failed to send OTP via Firebase');
   }
 }
 
+export async function verifyOtpFirebase(
+  sessionInfo: string,
+  code: string
+): Promise<{ idToken: string; refreshToken: string }> {
+  try {
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${FIREBASE_API_KEY}`,
+      {
+        sessionInfo,
+        code,
+      }
+    );
+
+    return {
+      idToken: response.data.idToken,
+      refreshToken: response.data.refreshToken,
+    };
+  } catch (error: any) {
+    console.error('Firebase verification error:', error.response?.data || error.message);
+    throw new Error('Invalid OTP');
+  }
+}
+
+// Fallback: Console log (test mode)
+export async function sendOtpTest(phone: string, otp: string): Promise<void> {
+  console.log(`📱 TEST MODE - OTP for ${phone}: ${otp}`);
+  console.log(`⚠️  Using test mode. Enable Firebase for production.`);
+}
