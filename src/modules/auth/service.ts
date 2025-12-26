@@ -1,27 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { generateAccessToken, generateRefreshToken, JwtPayload } from '../../utils/jwt';
 import { ApiError } from '../../utils/apiError';
-import { sendOtpFirebase, verifyOtpFirebase, sendOtpTest } from '../../utils/sms';
+import { sendOtpFirebase, verifyOtpFirebase } from '../../utils/sms';
 
 const prisma = new PrismaClient();
 
-// For Firebase flow
+// Store Firebase session info
 const sessionStore: { 
   [phone: string]: { 
     sessionInfo: string; 
     expires: number;
   } 
 } = {};
-
-// For test mode
-const otpStore: { 
-  [phone: string]: { 
-    code: string; 
-    expires: number;
-  } 
-} = {};
-
-const USE_FIREBASE = process.env.USE_FIREBASE === 'true';
 
 export async function sendOtp(phone: string) {
   // Validate phone
@@ -30,74 +20,41 @@ export async function sendOtp(phone: string) {
     throw new ApiError(400, 'Invalid Indian phone number. Use +91XXXXXXXXXX');
   }
 
-  if (USE_FIREBASE) {
-    // FIREBASE MODE
-    try {
-      const { sessionInfo } = await sendOtpFirebase(phone);
-      
-      sessionStore[phone] = {
-        sessionInfo,
-        expires: Date.now() + 5 * 60 * 1000,
-      };
-
-      return { 
-        message: 'OTP sent to your phone via SMS',
-        provider: 'firebase',
-      };
-    } catch (error) {
-      console.error('Firebase error:', error);
-      throw new ApiError(500, 'Failed to send OTP');
-    }
-  } else {
-    // TEST MODE
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+  try {
+    // Send via Firebase
+    const { sessionInfo } = await sendOtpFirebase(phone);
     
-    otpStore[phone] = {
-      code,
+    // Store session (5 min expiry)
+    sessionStore[phone] = {
+      sessionInfo,
       expires: Date.now() + 5 * 60 * 1000,
     };
 
-    await sendOtpTest(phone, code);
-
     return { 
       message: 'OTP sent successfully',
-      provider: 'test',
-      ...(process.env.NODE_ENV !== 'production' && { 
-        otp: code,
-        note: 'Test mode: OTP included in response'
-      }),
+      note: 'Enter the test OTP you configured in Firebase Console'
     };
+  } catch (error: any) {
+    console.error('Send OTP error:', error);
+    throw new ApiError(500, error.message || 'Failed to send OTP');
   }
 }
 
 export async function verifyOtp(phone: string, otp: string) {
-  if (USE_FIREBASE) {
-    // FIREBASE VERIFICATION
-    const session = sessionStore[phone];
-    
-    if (!session || Date.now() > session.expires) {
-      throw new ApiError(400, 'Session expired');
-    }
+  const session = sessionStore[phone];
+  
+  if (!session || Date.now() > session.expires) {
+    throw new ApiError(400, 'Session expired. Request new OTP');
+  }
 
-    try {
-      await verifyOtpFirebase(session.sessionInfo, otp);
-      delete sessionStore[phone];
-    } catch (error) {
-      throw new ApiError(400, 'Invalid OTP');
-    }
-  } else {
-    // TEST MODE VERIFICATION
-    const otpData = otpStore[phone];
+  try {
+    // Verify with Firebase
+    await verifyOtpFirebase(session.sessionInfo, otp);
     
-    if (!otpData || Date.now() > otpData.expires) {
-      throw new ApiError(400, 'OTP expired or invalid');
-    }
-    
-    if (otpData.code !== otp) {
-      throw new ApiError(400, 'Invalid OTP');
-    }
-
-    delete otpStore[phone];
+    // Clear session
+    delete sessionStore[phone];
+  } catch (error) {
+    throw new ApiError(400, 'Invalid OTP');
   }
 
   // Find or create user
