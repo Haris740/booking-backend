@@ -3,11 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { authRouter } from './modules/auth/routes';
-import { professionalRouter } from './modules/professionals/routes';
-import { adminRouter } from './modules/admin/routes';
-import { bookingRouter } from './modules/bookings/routes';
-import { errorHandler } from './middlewares/error';
 import { userRouter } from './modules/users/routes';
+import { professionalRouter } from './modules/professionals/routes';
+import { bookingRouter } from './modules/bookings/routes';
+import { adminRouter } from './modules/admin/routes';
+import { errorHandler } from './middlewares/error';
 
 const app = express();
 
@@ -23,8 +23,8 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRouter);
 app.use('/me', userRouter);
 app.use('/professional', professionalRouter);
-app.use('/admin', adminRouter);
 app.use('/bookings', bookingRouter);
+app.use('/admin', adminRouter);
 
 app.use(errorHandler);
 

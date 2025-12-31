@@ -10,6 +10,8 @@ export async function getMe(userId: string) {
             id: true,
             name: true,
             phone: true,
+            email: true,
+            profilePicture: true,
             city: true,
             role: true,
             isProfessional: true,
@@ -22,17 +24,29 @@ export async function getMe(userId: string) {
     return user;
 }
 
-export async function updateMe(userId: string, data: { name?: string; city?: string }) {
+export async function updateMe(
+    userId: string,
+    data: {
+        name?: string;
+        city?: string;
+        email?: string;
+        profilePicture?: string;
+    }
+) {
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
             ...(data.name && { name: data.name }),
             ...(data.city && { city: data.city }),
+            ...(data.email !== undefined && { email: data.email }),
+            ...(data.profilePicture !== undefined && { profilePicture: data.profilePicture }),
         },
         select: {
             id: true,
             name: true,
             phone: true,
+            email: true,
+            profilePicture: true,
             city: true,
             role: true,
             isProfessional: true,

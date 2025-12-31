@@ -1,28 +1,50 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiError } from '../utils/apiError';
-import { verifyAccessToken } from '../utils/jwt';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
-export function authenticate(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new ApiError(401, 'Authorization header missing or invalid'));
-  }
+const prisma = new PrismaClient();
 
-  const token = authHeader.split(' ')[1];
-  
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
-    const payload = verifyAccessToken(token);
-    (req as any).user = payload;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+
+    // Fetch user with professional profile
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      include: {
+        professionalProfile: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    (req as any).user = {
+      sub: decoded.sub,
+      role: user.role,
+      professionalId: user.professionalProfile?.id || null,
+    };
+
     next();
   } catch (error) {
-    next(new ApiError(401, 'Invalid or expired token'));
+    return res.status(401).json({ message: 'Invalid token' });
   }
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!(req as any).user || (req as any).user.role !== 'ADMIN') {
-    return next(new ApiError(403, 'Admin access required'));
-  }
-  next();
+export function authorize(roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    next();
+  };
 }
