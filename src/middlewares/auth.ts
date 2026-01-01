@@ -6,12 +6,18 @@ const prisma = new PrismaClient();
 
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log('🔐 Auth Header:', req.headers.authorization);
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
+      console.log('❌ No token found');
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    console.log('🎫 Token:', token.substring(0, 20) + '...');
+    console.log('🔑 JWT_ACCESS_SECRET exists:', !!process.env.JWT_ACCESS_SECRET);
+
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as any;
+    console.log('✅ Token decoded:', decoded);
 
     // Fetch user with professional profile
     const user = await prisma.user.findUnique({
@@ -23,7 +29,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       },
     });
 
+    console.log('👤 User found:', user ? user.id : 'NOT FOUND');
+
     if (!user) {
+      console.log('❌ User not in database');
       return res.status(401).json({ message: 'User not found' });
     }
 
@@ -34,7 +43,8 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     };
 
     next();
-  } catch (error) {
+  } catch (error: any) {
+    console.error('🚨 Auth Error:', error.message);
     return res.status(401).json({ message: 'Invalid token' });
   }
 }

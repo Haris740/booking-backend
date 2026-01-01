@@ -1,24 +1,23 @@
 import { Router } from 'express';
-import { 
-  listPendingController, 
-  getProfessionalController, 
-  approveProfessionalController, 
-  rejectProfessionalController 
-} from './controller';
 import { authenticate, requireAdmin } from '../../middlewares/auth';
+import {
+  getPendingProfessionalsController,
+  approveProfessionalController,
+  rejectProfessionalController,
+  getAllUsersController,
+  getAllBookingsController,
+} from './controller';
 
 const router = Router();
 
-// List pending professionals (Admin only)
-router.get('/professionals/pending', authenticate, requireAdmin, listPendingController);
+// All routes require authentication + admin role
+router.use(authenticate);
+router.use(requireAdmin);
 
-// Get professional details (Admin only)
-router.get('/professionals/:id', authenticate, requireAdmin, getProfessionalController);
-
-// Approve professional (Admin only)
-router.post('/professionals/:id/approve', authenticate, requireAdmin, approveProfessionalController);
-
-// Reject professional (Admin only)
-router.post('/professionals/:id/reject', authenticate, requireAdmin, rejectProfessionalController);
+router.get('/professionals/pending', getPendingProfessionalsController);
+router.patch('/professionals/:id/approve', approveProfessionalController);
+router.patch('/professionals/:id/reject', rejectProfessionalController);
+router.get('/users', getAllUsersController);
+router.get('/bookings', getAllBookingsController);
 
 export { router as adminRouter };
