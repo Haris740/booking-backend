@@ -41,13 +41,11 @@ export async function approveProfessionalController(
 ) {
   try {
     const { id } = req.params;
-    const { adminNote } = req.body;
 
     const professional = await prisma.professionalProfile.update({
       where: { id },
       data: {
         status: 'APPROVED',
-        adminNote,
       },
       include: {
         user: true,
@@ -76,13 +74,11 @@ export async function rejectProfessionalController(
 ) {
   try {
     const { id } = req.params;
-    const { adminNote } = req.body;
 
     const professional = await prisma.professionalProfile.update({
       where: { id },
       data: {
         status: 'REJECTED',
-        adminNote,
       },
     });
 

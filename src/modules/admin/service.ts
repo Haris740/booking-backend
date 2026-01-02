@@ -41,11 +41,11 @@ export async function getProfessionalDetails(profileId: string) {
   return profile;
 }
 
-export async function approveProfessional(profileId: string, adminId: string, adminNote?: string) {
+export async function approveProfessional(profileId: string, adminId: string) {
   return await prisma.$transaction(async (tx: any) => {
     const profile = await tx.professionalProfile.update({
       where: { id: profileId },
-      data: { status: 'APPROVED' as any, adminNote },
+      data: { status: 'APPROVED' as any},
       include: { category: true, user: true },
     });
 
@@ -58,11 +58,11 @@ export async function approveProfessional(profileId: string, adminId: string, ad
   });
 }
 
-export async function rejectProfessional(profileId: string, adminId: string, adminNote: string) {
+export async function rejectProfessional(profileId: string, adminId: string) {
   return await prisma.$transaction(async (tx: any) => {
     const profile = await tx.professionalProfile.update({
       where: { id: profileId },
-      data: { status: 'REJECTED' as any, adminNote },
+      data: { status: 'REJECTED' as any},
       include: { category: true, user: true },
     });
 
