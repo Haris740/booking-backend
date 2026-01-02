@@ -60,7 +60,6 @@ export async function approveProfessionalController(
       data: {
         isProfessional: true,
         professionalStatus: 'APPROVED',
-        adminNote,
       },
     });
 
@@ -92,7 +91,6 @@ export async function rejectProfessionalController(
       where: { id: professional.userId },
       data: {
         professionalStatus: 'REJECTED',
-        adminNote,
       },
     });
 
