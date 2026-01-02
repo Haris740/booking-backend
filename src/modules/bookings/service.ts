@@ -6,12 +6,10 @@ const prisma = new PrismaClient();
 export async function createTokenBooking(data: {
     userId: string;
     professionalId: string;
-    patientName: string;
-    patientAge: number;
-    patientGender: Gender;
-    patientPhone: string;
-    disease?: string;
-    symptoms?: string;
+    name: string;
+    age: number;
+    gender: Gender;
+    phone: string;
     appointmentDate: Date;
 }) {
     // Verify professional exists
@@ -51,19 +49,17 @@ export async function createTokenBooking(data: {
         throw new ApiError(400, 'Token limit reached for this day');
     }
 
-    // Calculate estimated wait time (15 mins per patient)
+    // Calculate estimated wait time (15 mins per )
     const estimatedWaitTime = (nextTokenNumber - 1) * 15;
 
     const booking = await prisma.booking.create({
         data: {
             userId: data.userId,
             professionalId: data.professionalId,
-            patientName: data.patientName,
-            patientAge: data.patientAge,
-            patientGender: data.patientGender,
-            patientPhone: data.patientPhone,
-            disease: data.disease,
-            symptoms: data.symptoms,
+            name: data.name,
+            age: data.age,
+            gender: data.gender,
+            phone: data.phone,
             appointmentDate: data.appointmentDate,
             appointmentType: 'TOKEN',
             tokenNumber: nextTokenNumber,
@@ -95,10 +91,10 @@ export async function createTokenBooking(data: {
 export async function createTimeSlotBooking(data: {
     userId: string;
     professionalId: string;
-    patientName: string;
-    patientAge: number;
-    patientGender: Gender;
-    patientPhone: string;
+    name: string;
+    age: number;
+    gender: Gender;
+    phone: string;
     disease?: string;
     symptoms?: string;
     appointmentDate: Date;
@@ -132,12 +128,10 @@ export async function createTimeSlotBooking(data: {
         data: {
             userId: data.userId,
             professionalId: data.professionalId,
-            patientName: data.patientName,
-            patientAge: data.patientAge,
-            patientGender: data.patientGender,
-            patientPhone: data.patientPhone,
-            disease: data.disease,
-            symptoms: data.symptoms,
+            name: data.name,
+            age: data.age,
+            gender: data.gender,
+            phone: data.phone,
             appointmentDate: data.appointmentDate,
             appointmentType: 'TIMESLOT',
             timeSlot: data.timeSlot,
@@ -194,8 +188,8 @@ export async function getTokenStatus(bookingId: string, userId: string) {
 
     const currentToken = currentBooking?.tokenNumber || 0;
 
-    // Count patients before this user
-    const patientsBeforeCount = await prisma.booking.count({
+    // Count s before this user
+    const sBeforeCount = await prisma.booking.count({
         where: {
             professionalId: booking.professionalId,
             appointmentDate: booking.appointmentDate,
@@ -208,8 +202,8 @@ export async function getTokenStatus(bookingId: string, userId: string) {
         booking,
         currentToken,
         yourToken: booking.tokenNumber,
-        patientsBeforeYou: patientsBeforeCount,
-        estimatedWaitTime: patientsBeforeCount * 15, // 15 mins per patient
+        sBeforeYou: sBeforeCount,
+        estimatedWaitTime: sBeforeCount * 15, // 15 mins per 
     };
 }
 
@@ -294,7 +288,7 @@ export async function callNextToken(professionalId: string, date: Date) {
         },
     });
 
-    // TODO: Send notification to patient
+    // TODO: Send notification to 
     // await sendNotification(updated.userId, "Doctor is calling you now");
 
     return updated;

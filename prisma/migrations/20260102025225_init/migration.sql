@@ -8,20 +8,26 @@ CREATE TYPE "ProfessionalStatus" AS ENUM ('NONE', 'PENDING', 'APPROVED', 'REJECT
 CREATE TYPE "ConsultationMode" AS ENUM ('ONLINE', 'OFFLINE', 'BOTH');
 
 -- CreateEnum
-CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'IN_PROGRESS', 'NO_SHOW');
+
+-- CreateEnum
+CREATE TYPE "AppointmentType" AS ENUM ('TOKEN', 'TIMESLOT', 'BOTH');
+
+-- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    "email" VARCHAR(100) NOT NULL,
-    "phone" VARCHAR(20),
+    "email" VARCHAR(255),
+    "profilePicture" TEXT,
+    "phone" VARCHAR(20) NOT NULL,
     "passwordHash" VARCHAR(255) NOT NULL,
     "city" VARCHAR(100),
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "isProfessional" BOOLEAN NOT NULL DEFAULT false,
     "professionalStatus" "ProfessionalStatus" NOT NULL DEFAULT 'NONE',
-    "adminNote" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -51,11 +57,19 @@ CREATE TABLE "professional_profiles" (
     "yearsExperience" INTEGER,
     "city" VARCHAR(100) NOT NULL,
     "address" TEXT,
-    "consultationMode" "ConsultationMode" NOT NULL DEFAULT 'ONLINE',
+    "consultationMode" "ConsultationMode" NOT NULL DEFAULT 'OFFLINE',
     "baseFee" INTEGER,
     "tags" VARCHAR(50)[],
+    "proof" VARCHAR(50),
     "status" "ProfessionalStatus" NOT NULL DEFAULT 'PENDING',
     "adminNote" TEXT,
+    "bookingType" "AppointmentType" NOT NULL DEFAULT 'BOTH',
+    "tokenLimitPerDay" INTEGER DEFAULT 50,
+    "availableDays" VARCHAR(20)[] DEFAULT ARRAY[]::VARCHAR(20)[],
+    "startTime" VARCHAR(20),
+    "endTime" VARCHAR(20),
+    "breakStartTime" VARCHAR(20),
+    "breakEndTime" VARCHAR(20),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -67,9 +81,17 @@ CREATE TABLE "bookings" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "professionalId" TEXT NOT NULL,
-    "scheduledFor" TIMESTAMP(3) NOT NULL,
-    "notes" TEXT,
+    "name" VARCHAR(100) NOT NULL,
+    "age" INTEGER NOT NULL,
+    "gender" "Gender" NOT NULL,
+    "phone" VARCHAR(20) NOT NULL,
+    "appointmentDate" TIMESTAMP(3) NOT NULL,
+    "appointmentType" "AppointmentType" NOT NULL,
+    "tokenNumber" INTEGER,
+    "timeSlot" VARCHAR(50),
     "status" "BookingStatus" NOT NULL DEFAULT 'PENDING',
+    "estimatedWaitTime" INTEGER,
+    "notificationsSent" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -113,10 +135,13 @@ CREATE INDEX "professional_profiles_city_status_idx" ON "professional_profiles"(
 CREATE INDEX "professional_profiles_categoryId_status_idx" ON "professional_profiles"("categoryId", "status");
 
 -- CreateIndex
+CREATE INDEX "bookings_professionalId_appointmentDate_status_idx" ON "bookings"("professionalId", "appointmentDate", "status");
+
+-- CreateIndex
 CREATE INDEX "bookings_userId_idx" ON "bookings"("userId");
 
 -- CreateIndex
-CREATE INDEX "bookings_professionalId_scheduledFor_idx" ON "bookings"("professionalId", "scheduledFor");
+CREATE INDEX "bookings_tokenNumber_idx" ON "bookings"("tokenNumber");
 
 -- AddForeignKey
 ALTER TABLE "professional_profiles" ADD CONSTRAINT "professional_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -7,6 +7,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                  String               @id @default(cuid())
+  name                String               @db.VarChar(100)
+  email               String?              @unique @db.VarChar(255)
+  profilePicture      String?
+  phone               String               @unique @db.VarChar(20)
+  passwordHash        String               @db.VarChar(255)
+  city                String?              @db.VarChar(100)
+  role                UserRole             @default(USER)
+  isProfessional      Boolean              @default(false)
+  professionalStatus  ProfessionalStatus   @default(NONE)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  userBookings        Booking[]            @relation("UserBookings")
+  professionalProfile ProfessionalProfile?
+
+  @@index([email])
+  @@index([phone])
+  @@index([professionalStatus])
+  @@map("users")
+}
+
+model ProfessionalCategory {
+  id             Int                   @id @default(autoincrement())
+  name           String                @db.VarChar(100)
+  slug           String                @unique @db.VarChar(100)
+  description    String?
+  professionType String                @db.VarChar(50)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  profiles       ProfessionalProfile[]
+
+  @@index([professionType])
+  @@index([slug])
+  @@map("professional_categories")
+}
+
+model ProfessionalProfile {
+  id               String               @id @default(cuid())
+  userId           String               @unique
+  title            String               @db.VarChar(150)
+  categoryId       Int
+  about            String?
+  yearsExperience  Int?
+  city             String               @db.VarChar(100)
+  address          String?
+  consultationMode ConsultationMode     @default(OFFLINE)
+  baseFee          Int?
+  tags             String[]             @db.VarChar(50)
+  proof            String?              @db.VarChar(50)
+  status           ProfessionalStatus   @default(PENDING)
+  adminNote        String?
+  bookingType      AppointmentType      @default(BOTH)
+  tokenLimitPerDay Int?                 @default(50)
+  availableDays    String[]             @default(dbgenerated("(ARRAY[]::character varying[])::character varying(20)[]")) @db.VarChar(20)
+  startTime        String?              @db.VarChar(20)
+  endTime          String?              @db.VarChar(20)
+  breakStartTime   String?              @db.VarChar(20)
+  breakEndTime     String?              @db.VarChar(20)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  proBookings      Booking[]            @relation("ProBookings")
+  category         ProfessionalCategory @relation(fields: [categoryId], references: [id])
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([city, status])
+  @@index([categoryId, status])
+  @@map("professional_profiles")
+}
+
+model Booking {
+  id                String              @id @default(cuid())
+  userId            String
+  professionalId    String
+  name              String              @db.VarChar(100)
+  age               Int
+  gender            Gender
+  phone             String              @db.VarChar(20)
+  appointmentDate   DateTime
+  appointmentType   AppointmentType
+  tokenNumber       Int?
+  timeSlot          String?             @db.VarChar(50)
+  status            BookingStatus       @default(PENDING)
+  estimatedWaitTime Int?
+  notificationsSent Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  professional      ProfessionalProfile @relation("ProBookings", fields: [professionalId], references: [id], onDelete: Cascade)
+  user              User                @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId, appointmentDate, status])
+  @@index([userId])
+  @@index([tokenNumber])
+  @@map("bookings")
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -37,124 +134,11 @@ enum BookingStatus {
 enum AppointmentType {
   TOKEN
   TIMESLOT
+  BOTH
 }
 
 enum Gender {
   MALE
   FEMALE
   OTHER
-}
-
-model User {
-  id             String  @id @default(cuid())
-  name           String  @db.VarChar(100)
-  email          String? @unique @db.VarChar(255)
-  profilePicture String? @db.Text
-  phone          String  @unique @db.VarChar(20)
-  passwordHash   String  @db.VarChar(255)
-  city           String? @db.VarChar(100)
-
-  role               UserRole           @default(USER)
-  isProfessional     Boolean            @default(false)
-  professionalStatus ProfessionalStatus @default(NONE)
-  adminNote          String?            @db.Text
-
-  // Relations
-  professionalProfile ProfessionalProfile?
-  userBookings        Booking[]            @relation("UserBookings")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-  @@index([phone])
-  @@index([professionalStatus])
-  @@map("users")
-}
-
-model ProfessionalCategory {
-  id             Int     @id @default(autoincrement())
-  name           String  @db.VarChar(100)
-  slug           String  @unique @db.VarChar(100)
-  description    String? @db.Text
-  professionType String  @db.VarChar(50)
-
-  profiles ProfessionalProfile[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([professionType])
-  @@index([slug])
-  @@map("professional_categories")
-}
-
-model ProfessionalProfile {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  title      String               @db.VarChar(150)
-  categoryId Int
-  category   ProfessionalCategory @relation(fields: [categoryId], references: [id])
-
-  about            String?          @db.Text
-  yearsExperience  Int?
-  city             String           @db.VarChar(100)
-  address          String?          @db.Text
-  consultationMode ConsultationMode @default(ONLINE)
-  baseFee          Int?
-  tags             String[]         @db.VarChar(50)
-
-  status    ProfessionalStatus @default(PENDING)
-  adminNote String?            @db.Text
-
-  // Token system settings
-  tokenLimitPerDay Int?     @default(50)
-  availableDays    String[] @default([]) @db.VarChar(20)
-  startTime        String?  @db.VarChar(20)
-  endTime          String?  @db.VarChar(20)
-  breakStartTime   String?  @db.VarChar(20)
-  breakEndTime     String?  @db.VarChar(20)
-
-  // Relations
-  proBookings Booking[] @relation("ProBookings")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([city, status])
-  @@index([categoryId, status])
-  @@map("professional_profiles")
-}
-
-model Booking {
-  id                String          @id @default(cuid())
-  userId            String
-  professionalId    String
-  patientName       String          @db.VarChar(100)
-  patientAge        Int
-  patientGender     Gender
-  patientPhone      String          @db.VarChar(20)
-  disease           String?         @db.VarChar(255)
-  symptoms          String?         @db.Text
-  appointmentDate   DateTime
-  appointmentType   AppointmentType
-  tokenNumber       Int?
-  timeSlot          String?         @db.VarChar(50)
-  status            BookingStatus   @default(PENDING)
-  estimatedWaitTime Int?
-  notificationsSent Json?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  // Relations
-  user         User                @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
-  professional ProfessionalProfile @relation("ProBookings", fields: [professionalId], references: [id], onDelete: Cascade)
-
-  @@index([professionalId, appointmentDate, status])
-  @@index([userId])
-  @@index([tokenNumber])
-  @@map("bookings")
 }
