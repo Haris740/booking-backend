@@ -56,7 +56,7 @@ model ProfessionalProfile {
   consultationMode ConsultationMode     @default(OFFLINE)
   baseFee          Int?
   tags             String[]             @db.VarChar(50)
-  proof            String?              @db.VarChar(50)
+  proof            String?
   status           ProfessionalStatus   @default(PENDING)
   adminNote        String?
   bookingType      AppointmentType      @default(BOTH)

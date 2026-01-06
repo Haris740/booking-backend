@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../middlewares/auth';
 import {
     applyProfessionalController,
+    getCategoriesController,
     getMyProfessionalProfileController,
     listProfessionalsController
 } from './controller';
@@ -26,5 +27,8 @@ router.get('/me', authenticate, getMyProfessionalProfileController);
 
 // Public: Search professionals
 router.get('/', validate(listProfessionalsQuerySchema, 'query'), listProfessionalsController);
+
+// Public: Get all categories
+router.get('/categories', getCategoriesController);
 
 export { router as professionalRouter };

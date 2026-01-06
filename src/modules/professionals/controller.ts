@@ -43,3 +43,16 @@ export async function listProfessionalsController(
     next(error);
   }
 }
+
+export async function getCategoriesController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const categories = await professionalService.getAllCategories();
+    res.json({ categories });
+  } catch (error) {
+    next(error);
+  }
+}

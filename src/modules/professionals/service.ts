@@ -169,3 +169,23 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
     },
   };
 }
+
+export async function getAllCategories() {
+  const categories = await prisma.professionalCategory.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      professionType: true,
+      _count: {
+        select: {
+          profiles: true,
+        },
+      },
+    },
+  });
+
+  return categories;
+}
