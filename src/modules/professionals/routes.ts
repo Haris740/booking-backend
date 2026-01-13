@@ -1,34 +1,32 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/auth';
 import {
-    applyProfessionalController,
     getCategoriesController,
-    getMyProfessionalProfileController,
-    listProfessionalsController
+    canApplyAsProfessionalController,
+    inviteStaffController,
+    getMyStaffInvitationsController,
+    acceptStaffInvitationController,
+    rejectStaffInvitationController,
+    getMyStaffController,
+    removeStaffController,
 } from './controller';
-import { validate } from '../../middlewares/validate';
-import {
-    applyProfessionalSchema,
-    listProfessionalsQuerySchema
-} from './validators';
 
-const router = Router({ mergeParams: true });
+const router = Router();
 
-// Protected: Apply to become professional
-router.post(
-    '/apply',
-    authenticate,
-    validate(applyProfessionalSchema),
-    applyProfessionalController
-);
-
-// Protected: Get my professional profile
-router.get('/me', authenticate, getMyProfessionalProfileController);
-
-// Public: Search professionals
-router.get('/', validate(listProfessionalsQuerySchema, 'query'), listProfessionalsController);
-
-// Public: Get all categories
+// Public
 router.get('/categories', getCategoriesController);
+
+// Protected
+router.get('/can-apply', authenticate, canApplyAsProfessionalController);
+
+// Staff management (Professional only)
+router.post('/staff/invite', authenticate, inviteStaffController);
+router.get('/staff', authenticate, getMyStaffController);
+router.delete('/staff/:staffId', authenticate, removeStaffController);
+
+// Staff invitations (User)
+router.get('/staff/invitations', authenticate, getMyStaffInvitationsController);
+router.post('/staff/invitations/:invitationId/accept', authenticate, acceptStaffInvitationController);
+router.post('/staff/invitations/:invitationId/reject', authenticate, rejectStaffInvitationController);
 
 export { router as professionalRouter };

@@ -18,10 +18,13 @@ model User {
   role                UserRole             @default(USER)
   isProfessional      Boolean              @default(false)
   professionalStatus  ProfessionalStatus   @default(NONE)
+  isStaff             Boolean              @default(false)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   userBookings        Booking[]            @relation("UserBookings")
   professionalProfile ProfessionalProfile?
+  staffProfile        Staff?
+  staffInvitations    StaffInvitation[]
 
   @@index([email])
   @@index([phone])
@@ -69,6 +72,8 @@ model ProfessionalProfile {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   proBookings      Booking[]            @relation("ProBookings")
+  staffMembers     Staff[]              @relation("StaffMembers")
+  staffInvitations StaffInvitation[]    @relation("StaffInvitations")
   category         ProfessionalCategory @relation(fields: [categoryId], references: [id])
   user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -104,9 +109,43 @@ model Booking {
   @@map("bookings")
 }
 
+model Staff {
+  id             String @id @default(cuid())
+  userId         String @unique
+  professionalId String
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation("StaffMembers", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([professionalId])
+  @@map("staff")
+}
+
+model StaffInvitation {
+  id             String      @id @default(cuid())
+  professionalId String
+  invitedUserId  String
+  status         StaffStatus @default(PENDING)
+  message        String?     @db.Text
+
+  invitedUser  User                @relation(fields: [invitedUserId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation("StaffInvitations", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([professionalId, invitedUserId])
+  @@index([invitedUserId, status])
+  @@map("staff_invitations")
+}
+
 enum UserRole {
   USER
   ADMIN
+  STAFF
 }
 
 enum ProfessionalStatus {
@@ -120,6 +159,12 @@ enum ConsultationMode {
   ONLINE
   OFFLINE
   BOTH
+}
+
+enum StaffStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 enum BookingStatus {

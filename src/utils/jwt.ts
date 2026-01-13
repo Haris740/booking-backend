@@ -3,7 +3,7 @@ import { config } from '../config';
 
 export interface JwtPayload {
   sub: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'STAFF';
   isProfessional: boolean;
   professionalStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 }

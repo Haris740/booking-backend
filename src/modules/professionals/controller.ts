@@ -1,43 +1,110 @@
 import { Request, Response, NextFunction } from 'express';
-import * as professionalService from './service';
-import { applyProfessionalSchema, listProfessionalsQuerySchema } from './validators';
+import * as professionalService from './service'; 
 
-export async function applyProfessionalController(
+export async function canApplyAsProfessionalController(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
     const userId = (req as any).user!.sub;
-    const profile = await professionalService.applyForProfessional(userId, req.body);
-    res.status(201).json({ profile });
+    const result = await professionalService.canApplyAsProfessional(userId);
+    res.json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export async function getMyProfessionalProfileController(
+export async function inviteStaffController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const professionalId = (req as any).user!.professionalId;
+    if (!professionalId) {
+      return res.status(403).json({ message: 'Not a professional' });
+    }
+    const invitation = await professionalService.inviteStaff(professionalId, req.body);
+    res.status(201).json({ invitation });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyStaffInvitationsController(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
     const userId = (req as any).user!.sub;
-    const profile = await professionalService.getMyProfessionalProfile(userId);
-    res.json({ profile });
+    const invitations = await professionalService.getMyStaffInvitations(userId);
+    res.json({ invitations });
   } catch (error) {
     next(error);
   }
 }
 
-export async function listProfessionalsController(
+export async function acceptStaffInvitationController(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const query = listProfessionalsQuerySchema.parse(req.query);
-    const result = await professionalService.listProfessionals(query);
+    const userId = (req as any).user!.sub;
+    const { invitationId } = req.params;
+    const result = await professionalService.acceptStaffInvitation(userId, invitationId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectStaffInvitationController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = (req as any).user!.sub;
+    const { invitationId } = req.params;
+    const result = await professionalService.rejectStaffInvitation(userId, invitationId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyStaffController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const professionalId = (req as any).user!.professionalId;
+    if (!professionalId) {
+      return res.status(403).json({ message: 'Not a professional' });
+    }
+    const staff = await professionalService.getMyStaff(professionalId);
+    res.json({ staff });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeStaffController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const professionalId = (req as any).user!.professionalId;
+    if (!professionalId) {
+      return res.status(403).json({ message: 'Not a professional' });
+    }
+    const { staffId } = req.params;
+    const result = await professionalService.removeStaff(professionalId, staffId);
     res.json(result);
   } catch (error) {
     next(error);

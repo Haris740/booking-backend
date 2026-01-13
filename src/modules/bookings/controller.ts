@@ -82,22 +82,16 @@ export async function cancelBookingController(
 }
 
 // PROFESSIONAL CONTROLLERS
-
 export async function callNextTokenController(
     req: Request,
     res: Response,
     next: NextFunction
 ) {
     try {
-        const professionalId = (req as any).user!.professionalId;
-        if (!professionalId) {
-            return res.status(403).json({ message: 'Not a professional' });
-        }
-        const { date } = req.body;
-        const nextToken = await bookingService.callNextToken(
-            professionalId,
-            new Date(date || new Date())
-        );
+        const userId = (req as any).user!.sub;
+        const { professionalId, date } = req.body;
+
+        const nextToken = await bookingService.callNextToken(professionalId);
         res.json({ nextToken });
     } catch (error) {
         next(error);
@@ -110,12 +104,9 @@ export async function markNoShowController(
     next: NextFunction
 ) {
     try {
-        const professionalId = (req as any).user!.professionalId;
-        if (!professionalId) {
-            return res.status(403).json({ message: 'Not a professional' });
-        }
+        const userId = (req as any).user!.sub;
         const { bookingId } = req.params;
-        const booking = await bookingService.markNoShow(bookingId, professionalId);
+        const booking = await bookingService.markNoShow(bookingId);
         res.json({ booking });
     } catch (error) {
         next(error);
@@ -128,11 +119,14 @@ export async function getTodayQueueController(
     next: NextFunction
 ) {
     try {
-        const professionalId = (req as any).user!.professionalId;
+        const userId = (req as any).user!.sub;
+        const { professionalId } = req.query;
+
         if (!professionalId) {
-            return res.status(403).json({ message: 'Not a professional' });
+            return res.status(400).json({ message: 'professionalId required' });
         }
-        const queue = await bookingService.getTodayQueue(professionalId);
+
+        const queue = await bookingService.getTodayQueue(professionalId as string);
         res.json(queue);
     } catch (error) {
         next(error);
