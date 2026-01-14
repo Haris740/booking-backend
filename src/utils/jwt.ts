@@ -1,25 +1,30 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
-import { config } from '../config';
+import jwt from 'jsonwebtoken';
 
 export interface JwtPayload {
   sub: string;
   role: 'USER' | 'ADMIN' | 'STAFF';
-  isProfessional: boolean;
-  professionalStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  isProfessional?: boolean;
+  professionalStatus?: string;
 }
 
 export function generateAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, config.jwt.accessSecret, { 
-    expiresIn: config.jwt.accessExpiry as any 
-  });
+  const secret = process.env.JWT_SECRET! as jwt.Secret;
+  const expiresIn = (process.env.JWT_ACCESS_EXPIRY || '7d') as jwt.SignOptions['expiresIn'];
+  
+  return jwt.sign(payload, secret, { expiresIn });
 }
 
 export function generateRefreshToken(userId: string): string {
-  return jwt.sign({ sub: userId }, config.jwt.refreshSecret, { 
-    expiresIn: config.jwt.refreshExpiry as any 
-  });
+  const secret = (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!) as jwt.Secret;
+  const expiresIn = (process.env.JWT_REFRESH_EXPIRY || '30d') as jwt.SignOptions['expiresIn'];
+  
+  return jwt.sign({ sub: userId }, secret, { expiresIn });
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, config.jwt.accessSecret) as JwtPayload;
+  return jwt.verify(token, process.env.JWT_SECRET! as jwt.Secret) as JwtPayload;
+}
+
+export function verifyRefreshToken(token: string): { sub: string } {
+  return jwt.verify(token, (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!) as jwt.Secret) as { sub: string };
 }

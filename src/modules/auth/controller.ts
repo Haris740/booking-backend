@@ -21,3 +21,20 @@ export async function verifyOtpController(req: Request, res: Response, next: Nex
   }
 }
 
+export async function refreshTokenController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ 
+        message: 'Refresh token required',
+        code: 'NO_REFRESH_TOKEN' 
+      });
+    }
+
+    const result = await authService.refreshAccessToken(refreshToken);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

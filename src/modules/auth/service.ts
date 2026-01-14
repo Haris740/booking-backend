@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { generateAccessToken, generateRefreshToken, JwtPayload } from '../../utils/jwt';
 import { ApiError } from '../../utils/apiError';
 import { sendOtpFirebase, verifyOtpFirebase } from '../../utils/sms';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -60,6 +61,14 @@ export async function verifyOtp(phone: string, otp: string) {
   // Find or create user
   let user = await prisma.user.findUnique({
     where: { phone: phone.replace(/[\+\s\-]/g, '') },
+    include: {
+      professionalProfile: {
+        select: { id: true },
+      },
+      staffProfile: {
+        select: { id: true, professionalId: true },
+      },
+    },
   });
 
   if (!user) {
@@ -70,6 +79,14 @@ export async function verifyOtp(phone: string, otp: string) {
         passwordHash: '',
         city: 'Unknown',
       } as any,
+      include: {
+        professionalProfile: {
+          select: { id: true },
+        },
+        staffProfile: {
+          select: { id: true, professionalId: true },
+        },
+      },
     });
   }
 
@@ -88,12 +105,79 @@ export async function verifyOtp(phone: string, otp: string) {
       id: user.id,
       name: user.name,
       phone: user.phone,
+      email: user.email,
+      profilePicture: user.profilePicture,
       city: user.city,
       role: user.role,
       isProfessional: user.isProfessional,
       professionalStatus: user.professionalStatus,
+      isStaff: user.isStaff,
+      professionalId: user.professionalProfile?.id || null,
+      staffProfessionalId: user.staffProfile?.professionalId || null,
       createdAt: user.createdAt,
     },
-    tokens: { accessToken, refreshToken },
+    tokens: { 
+      accessToken, 
+      refreshToken 
+    },
   };
+}
+
+// ✅ NEW: Refresh Token Function
+export async function refreshAccessToken(refreshToken: string) {
+  try {
+    // Verify refresh token
+    const decoded = jwt.verify(
+      refreshToken, 
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!
+    ) as any;
+
+    // Get user with latest data
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      include: {
+        professionalProfile: {
+          select: { id: true },
+        },
+        staffProfile: {
+          select: { id: true, professionalId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ApiError(401, 'User not found');
+    }
+
+    // Generate new tokens
+    const payload: JwtPayload = {
+      sub: user.id,
+      role: user.role,
+      isProfessional: user.isProfessional,
+      professionalStatus: user.professionalStatus as any,
+    };
+
+    const newAccessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        isProfessional: user.isProfessional,
+        professionalStatus: user.professionalStatus,
+        isStaff: user.isStaff,
+        professionalId: user.professionalProfile?.id || null,
+        staffProfessionalId: user.staffProfile?.professionalId || null,
+      },
+    };
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      throw new ApiError(401, 'Refresh token expired. Please login again');
+    }
+    throw new ApiError(401, 'Invalid refresh token');
+  }
 }
