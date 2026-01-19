@@ -9,6 +9,9 @@ import {
     rejectStaffInvitationController,
     getMyStaffController,
     removeStaffController,
+    applyProfessionalController,
+    getAllProfessionalsController,
+    getProfessionalController,
 } from './controller';
 
 const router = Router();
@@ -17,7 +20,10 @@ const router = Router();
 router.get('/categories', getCategoriesController);
 
 // Protected
+router.post('/apply', authenticate, applyProfessionalController);
 router.get('/can-apply', authenticate, canApplyAsProfessionalController);
+router.get('/', authenticate, getAllProfessionalsController);
+router.get('/:id', authenticate, getProfessionalController);
 
 // Staff management (Professional only)
 router.post('/staff/invite', authenticate, inviteStaffController);

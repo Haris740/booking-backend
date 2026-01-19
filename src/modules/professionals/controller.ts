@@ -1,5 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
-import * as professionalService from './service'; 
+import * as professionalService from './service';
+
+export async function applyProfessionalController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = (req as any).user!.sub;
+    const profile = await professionalService.applyForProfessional(userId, req.body);
+    res.status(201).json({ profile });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function canApplyAsProfessionalController(
   req: Request,
@@ -119,6 +133,62 @@ export async function getCategoriesController(
   try {
     const categories = await professionalService.getAllCategories();
     res.json({ categories });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAllProfessionalsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { 
+      page, 
+      limit, 
+      city, 
+      categoryId, 
+      search, 
+      status 
+    } = req.query;
+
+    const result = await professionalService.getAllProfessionals({
+      page: page ? parseInt(page as string) : undefined,
+      limit: limit ? parseInt(limit as string) : undefined,
+      city: city as string,
+      categoryId: categoryId ? parseInt(categoryId as string) : undefined,
+      search: search as string,
+      status: status as 'PENDING' | 'APPROVED' | 'REJECTED',
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getProfessionalController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Professional ID is required' 
+      });
+    }
+
+    const professional = await professionalService.getProfessionalById(id);
+    
+    res.json({
+      success: true,
+      professional,
+    });
   } catch (error) {
     next(error);
   }
