@@ -123,7 +123,6 @@ export async function verifyOtp(phone: string, otp: string) {
   };
 }
 
-// ✅ NEW: Refresh Token Function
 export async function refreshAccessToken(refreshToken: string) {
   try {
     // Verify refresh token
@@ -180,4 +179,34 @@ export async function refreshAccessToken(refreshToken: string) {
     }
     throw new ApiError(401, 'Invalid refresh token');
   }
+}
+
+export async function registerUser(
+  userId: string, 
+  data: { name?: string; email?: string; city?: string }
+) {
+  // Validate name
+  if (!data.name || !data.name.trim()) {
+    throw new ApiError(400, 'Name is required');
+  }
+
+  // Update user
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: data.name.trim(),
+      email: data.email?.trim() || null,
+      city: data.city?.trim() || null,
+    },
+  });
+
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      city: user.city,
+      phone: user.phone,
+    },
+  };
 }

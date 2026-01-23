@@ -3,57 +3,77 @@ import { ApiError } from '../../utils/apiError';
 
 const prisma = new PrismaClient();
 
-export async function getMe(userId: string) {
+export async function getUserProfile(userId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            profilePicture: true,
-            city: true,
-            role: true,
-            isProfessional: true,
-            professionalStatus: true,
-            createdAt: true,
+        include: {
+            professionalProfile: {
+                select: {
+                    id: true,
+                    title: true,
+                    city: true,
+                    status: true,
+                    baseFee: true,
+                    bookingType: true,
+                    category: {
+                        select: {
+                            name: true,
+                            professionType: true,
+                        },
+                    },
+                },
+            },
+            staffProfile: {
+                select: {
+                    id: true,
+                    professionalId: true,
+                    professional: {
+                        select: {
+                            id: true,
+                            title: true,
+                        },
+                    },
+                },
+            },
         },
     });
 
-    if (!user) throw new ApiError(404, 'User not found');
-    return user;
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        city: user.city,
+        phone: user.phone,
+        profilePicture: user.profilePicture,
+        isProfessional: user.isProfessional,
+        professionalStatus: user.professionalStatus,
+        professionalId: user.professionalProfile?.id || null,
+        professional: user.professionalProfile || null,
+        isStaff: user.isStaff,
+        staffProfile: user.staffProfile || null,
+    };
 }
 
-export async function updateMe(
-    userId: string,
-    data: {
-        name?: string;
-        city?: string;
-        email?: string;
-        profilePicture?: string;
-    }
-) {
+export async function updateUserProfile(userId: string, updates: any) {
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
-            ...(data.name && { name: data.name }),
-            ...(data.city && { city: data.city }),
-            ...(data.email !== undefined && { email: data.email }),
-            ...(data.profilePicture !== undefined && { profilePicture: data.profilePicture }),
-        },
-        select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            profilePicture: true,
-            city: true,
-            role: true,
-            isProfessional: true,
-            professionalStatus: true,
-            createdAt: true,
+            name: updates.name,
+            email: updates.email,
+            city: updates.city,
+            profilePicture: updates.profilePicture,
         },
     });
 
-    return user;
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        city: user.city,
+        profilePicture: user.profilePicture,
+    };
 }

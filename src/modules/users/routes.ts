@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import * as userController from './controller';
 import { authenticate } from '../../middlewares/auth';
-import { getMeController, updateMeController } from './controller';
 
 const router = Router();
 
-router.get('/', authenticate, getMeController);
-router.patch('/', authenticate, updateMeController);
+router.get('/me', authenticate, userController.getMeController);
+router.patch('/me', authenticate, userController.updateProfileController);
 
 export { router as userRouter };
